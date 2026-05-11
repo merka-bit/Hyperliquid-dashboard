@@ -1,0 +1,333 @@
+# Hyperliquid Streamlit Dashboard
+
+```python
+import streamlit as st
+import pandas as pd
+import numpy as np
+import plotly.express as px
+import plotly.graph_objects as go
+from plotly.subplots import make_subplots
+
+st.set_page_config(
+    page_title="Hyperliquid Trading Dashboard",
+    layout="wide",
+    initial_sidebar_state="expanded"
+)
+
+# =========================
+# SIDEBAR
+# =========================
+
+st.sidebar.title("⚡ Hyperliquid Dashboard")
+
+uploaded_file = st.sidebar.file_uploader(
+    "Upload Hyperliquid CSV",
+    type=["csv"]
+)
+
+if uploaded_file is None:
+    st.info("Upload your Hyperliquid trade history CSV file to begin.")
+    st.stop()
+
+# =========================
+# LOAD DATA
+# =========================
+
+@st.cache_data
+
+def load_data(file):
+    df = pd.read_csv(file)
+
+    df["time"] = pd.to_datetime(
+        df["time"],
+        format="%d.%m.%Y - %H:%M:%S",
+        errors="coerce"
+    )
+
+    numeric_cols = ["closedPnl", "fee", "ntl"]
+
+    for col in numeric_cols:
+        if col in df.columns:
+            df[col] = pd.to_numeric(df[col], errors="coerce")
+
+    return df
+
+
+df = load_data(uploaded_file)
+
+# =========================
+# FILTERS
+# =========================
+
+st.sidebar.subheader("Filters")
+
+coins = sorted(df["coin"].dropna().unique())
+selected_coins = st.sidebar.multiselect(
+    "Select Coins",
+    coins,
+    default=coins
+)
+
+filtered_df = df[df["coin"].isin(selected_coins)]
+
+# =========================
+# METRICS
+# =========================
+
+filtered_df = filtered_df.sort_values("time")
+filtered_df["cum_pnl"] = filtered_df["closedPnl"].cumsum()
+
+wins = filtered_df[filtered_df["closedPnl"] > 0]
+losses = filtered_df[filtered_df["closedPnl"] < 0]
+
+winrate = (
+    len(wins) / (len(wins) + len(losses)) * 100
+    if (len(wins) + len(losses)) > 0
+    else 0
+)
+
+profit_factor = (
+    wins["closedPnl"].sum() / abs(losses["closedPnl"].sum())
+    if len(losses) > 0
+    else np.nan
+)
+
+max_drawdown = (
+    filtered_df["cum_pnl"]
+    - filtered_df["cum_pnl"].cummax()
+).min()
+
+avg_trade = filtered_df["closedPnl"].mean()
+
+# =========================
+# HEADER
+# =========================
+
+st.title("📈 Hyperliquid Performance Dashboard")
+
+# =========================
+# KPI CARDS
+# =========================
+
+col1, col2, col3, col4, col5, col6 = st.columns(6)
+
+col1.metric(
+    "Total PnL",
+    f"${filtered_df['closedPnl'].sum():,.2f}"
+)
+
+col2.metric(
+    "Winrate",
+    f"{winrate:.2f}%"
+)
+
+col3.metric(
+    "Trades",
+    f"{len(filtered_df):,}"
+)
+
+col4.metric(
+    "Profit Factor",
+    f"{profit_factor:.2f}"
+)
+
+col5.metric(
+    "Max Drawdown",
+    f"${max_drawdown:,.2f}"
+)
+
+col6.metric(
+    "Avg Trade",
+    f"${avg_trade:,.2f}"
+)
+
+st.divider()
+
+# =========================
+# EQUITY CURVE
+# =========================
+
+st.subheader("Equity Curve")
+
+fig_equity = px.line(
+    filtered_df,
+    x="time",
+    y="cum_pnl",
+    template="plotly_dark"
+)
+
+st.plotly_chart(fig_equity, use_container_width=True)
+
+# =========================
+# DAILY PNL
+# =========================
+
+st.subheader("Daily PnL")
+
+filtered_df["date"] = filtered_df["time"].dt.date
+
+pnl_daily = (
+    filtered_df.groupby("date")["closedPnl"]
+    .sum()
+    .reset_index()
+)
+
+fig_daily = px.bar(
+    pnl_daily,
+    x="date",
+    y="closedPnl",
+    template="plotly_dark"
+)
+
+st.plotly_chart(fig_daily, use_container_width=True)
+
+# =========================
+# LONG VS SHORT
+# =========================
+
+if "dir" in filtered_df.columns:
+    st.subheader("Long vs Short")
+
+    direction_stats = (
+        filtered_df.groupby("dir")["closedPnl"]
+        .sum()
+        .reset_index()
+    )
+
+    fig_dir = px.pie(
+        direction_stats,
+        names="dir",
+        values="closedPnl",
+        template="plotly_dark"
+    )
+
+    st.plotly_chart(fig_dir, use_container_width=True)
+
+# =========================
+# TOP COINS
+# =========================
+
+st.subheader("Top Coins by PnL")
+
+coin_stats = (
+    filtered_df.groupby("coin")["closedPnl"]
+    .sum()
+    .sort_values(ascending=False)
+    .reset_index()
+)
+
+fig_coin = px.bar(
+    coin_stats,
+    x="coin",
+    y="closedPnl",
+    template="plotly_dark"
+)
+
+st.plotly_chart(fig_coin, use_container_width=True)
+
+# =========================
+# PNL DISTRIBUTION
+# =========================
+
+st.subheader("Trade Distribution")
+
+fig_hist = px.histogram(
+    filtered_df,
+    x="closedPnl",
+    nbins=50,
+    template="plotly_dark"
+)
+
+st.plotly_chart(fig_hist, use_container_width=True)
+
+# =========================
+# HEATMAP
+# =========================
+
+st.subheader("Trading Heatmap")
+
+filtered_df["weekday"] = filtered_df["time"].dt.day_name()
+filtered_df["hour"] = filtered_df["time"].dt.hour
+
+heatmap = filtered_df.pivot_table(
+    index="weekday",
+    columns="hour",
+    values="closedPnl",
+    aggfunc="sum"
+)
+
+weekday_order = [
+    "Monday",
+    "Tuesday",
+    "Wednesday",
+    "Thursday",
+    "Friday",
+    "Saturday",
+    "Sunday"
+]
+
+heatmap = heatmap.reindex(weekday_order)
+
+fig_heat = px.imshow(
+    heatmap,
+    aspect="auto",
+    template="plotly_dark"
+)
+
+st.plotly_chart(fig_heat, use_container_width=True)
+
+# =========================
+# RAW DATA
+# =========================
+
+with st.expander("Raw Data"):
+    st.dataframe(filtered_df, use_container_width=True)
+
+# =========================
+# EXPORT
+# =========================
+
+csv_export = filtered_df.to_csv(index=False).encode("utf-8")
+
+st.download_button(
+    label="Download Filtered CSV",
+    data=csv_export,
+    file_name="filtered_trades.csv",
+    mime="text/csv"
+)
+```
+
+---
+
+# Installation
+
+```bash
+pip install streamlit pandas numpy plotly
+```
+
+---
+
+# Run App
+
+```bash
+streamlit run app.py
+```
+
+---
+
+# Recommended Future Upgrades
+
+* Sharpe Ratio
+* Sortino Ratio
+* Funding Analysis
+* Position Sizing Analytics
+* Trade Replay
+* Strategy Comparison
+* Risk Dashboard
+* Monte Carlo Simulation
+* Execution Analytics
+* API connection to Hyperliquid
+* Live PnL tracking
+* Telegram alerts
+* Portfolio correlation matrix
+* Multi-account support
