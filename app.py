@@ -13,6 +13,7 @@ st.set_page_config(
 
 DATA_DIR = Path("csv")
 DEFAULT_CSV = DATA_DIR / "trade_history.csv"
+ROOT_CSV = Path("trade_history.csv")
 STARTING_CAPITAL = 2000.0
 
 
@@ -47,7 +48,7 @@ def format_currency(value):
 
 
 st.sidebar.title("Hyperliquid Dashboard")
-st.sidebar.caption(f"Default source: {DEFAULT_CSV}")
+st.sidebar.caption("Default source: csv/trade_history.csv or trade_history.csv")
 
 uploaded_file = st.sidebar.file_uploader("Upload Hyperliquid CSV", type=["csv"])
 
@@ -57,9 +58,12 @@ if uploaded_file is not None:
 elif DEFAULT_CSV.exists() and DEFAULT_CSV.stat().st_size > 0:
     df = load_data(DEFAULT_CSV)
     data_source = str(DEFAULT_CSV)
+elif ROOT_CSV.exists() and ROOT_CSV.stat().st_size > 0:
+    df = load_data(ROOT_CSV)
+    data_source = str(ROOT_CSV)
 else:
     st.info(
-        "Add a non-empty CSV file to the 'csv' folder or upload one in the sidebar to begin."
+        "Add a non-empty CSV file to the 'csv' folder, project root, or upload one in the sidebar to begin."
     )
     st.stop()
 
@@ -218,3 +222,4 @@ st.download_button(
     file_name="filtered_trades.csv",
     mime="text/csv",
 )
+
