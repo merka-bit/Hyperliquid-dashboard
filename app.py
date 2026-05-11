@@ -147,12 +147,15 @@ avg_trade_profit_pct = (
 
 st.caption(f"Period: {start_date} to {end_date}")
 
-col1, col2, col3, col4, col5 = st.columns(5)
+trade_count = len(filtered_df)
+
+col1, col2, col3, col4, col5, col6 = st.columns(6)
 col1.metric("Total Return", format_percent(total_return_pct))
 col2.metric("Winrate", format_percent(winrate))
-col3.metric("Avg Trade", format_percent(avg_trade_pct))
-col4.metric("Max Drawdown", format_percent(max_drawdown_pct))
-col5.metric("Avg Trade Profit", format_percent(avg_trade_profit_pct))
+col3.metric("Trades", f"{trade_count:,}")
+col4.metric("Avg Trade", format_percent(avg_trade_pct))
+col5.metric("Max Drawdown", format_percent(max_drawdown_pct))
+col6.metric("Avg Trade Profit", format_percent(avg_trade_profit_pct))
 
 st.divider()
 
@@ -222,4 +225,3 @@ st.download_button(
     file_name="filtered_trades.csv",
     mime="text/csv",
 )
-
