@@ -182,17 +182,6 @@ if "dir" in filtered_df.columns:
     )
     st.plotly_chart(fig_dir, use_container_width=True)
 
-st.subheader("Top Coins by PnL")
-coin_stats = (
-    filtered_df.groupby("coin")["closedPnl"].sum().sort_values(ascending=False).reset_index()
-)
-fig_coin = px.bar(coin_stats, x="coin", y="closedPnl", template="plotly_dark")
-st.plotly_chart(fig_coin, use_container_width=True)
-
-st.subheader("Trade Distribution")
-fig_hist = px.histogram(filtered_df, x="closedPnl", nbins=50, template="plotly_dark")
-st.plotly_chart(fig_hist, use_container_width=True)
-
 st.subheader("Trading Heatmap")
 filtered_df["weekday"] = filtered_df["time"].dt.day_name()
 filtered_df["hour"] = filtered_df["time"].dt.hour
@@ -214,9 +203,6 @@ weekday_order = [
 heatmap = heatmap.reindex(weekday_order)
 fig_heat = px.imshow(heatmap, aspect="auto", template="plotly_dark")
 st.plotly_chart(fig_heat, use_container_width=True)
-
-with st.expander("Raw Data"):
-    st.dataframe(filtered_df, use_container_width=True)
 
 csv_export = filtered_df.to_csv(index=False).encode("utf-8")
 st.download_button(
