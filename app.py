@@ -49,13 +49,7 @@ def format_currency(value):
 
 st.sidebar.title("Hyperliquid Dashboard")
 st.sidebar.caption("Default source: csv/trade_history.csv or trade_history.csv")
-
-uploaded_file = st.sidebar.file_uploader("Upload Hyperliquid CSV", type=["csv"])
-
-if uploaded_file is not None:
-    df = load_data(uploaded_file)
-    data_source = uploaded_file.name
-elif DEFAULT_CSV.exists() and DEFAULT_CSV.stat().st_size > 0:
+if DEFAULT_CSV.exists() and DEFAULT_CSV.stat().st_size > 0:
     df = load_data(DEFAULT_CSV)
     data_source = str(DEFAULT_CSV)
 elif ROOT_CSV.exists() and ROOT_CSV.stat().st_size > 0:
@@ -63,7 +57,7 @@ elif ROOT_CSV.exists() and ROOT_CSV.stat().st_size > 0:
     data_source = str(ROOT_CSV)
 else:
     st.info(
-        "Add a non-empty CSV file to the 'csv' folder, project root, or upload one in the sidebar to begin."
+        "Add a non-empty CSV file to the 'csv' folder or project root to begin."
     )
     st.stop()
 
@@ -169,9 +163,16 @@ fig_equity = px.line(
 )
 st.plotly_chart(fig_equity, use_container_width=True)
 
-st.subheader("Daily PnL")
+st.subheader("Daily Return")
 pnl_daily = filtered_df.groupby("date", as_index=False)["closedPnl"].sum()
-fig_daily = px.bar(pnl_daily, x="date", y="closedPnl", template="plotly_dark")
+pnl_daily["daily_return_pct"] = pnl_daily["closedPnl"] / STARTING_CAPITAL * 100
+fig_daily = px.bar(
+    pnl_daily,
+    x="date",
+    y="daily_return_pct",
+    template="plotly_dark",
+    labels={"daily_return_pct": "Daily Return (%)", "date": "Date"},
+)
 st.plotly_chart(fig_daily, use_container_width=True)
 
 if "dir" in filtered_df.columns:
@@ -204,10 +205,3 @@ heatmap = heatmap.reindex(weekday_order)
 fig_heat = px.imshow(heatmap, aspect="auto", template="plotly_dark")
 st.plotly_chart(fig_heat, use_container_width=True)
 
-csv_export = filtered_df.to_csv(index=False).encode("utf-8")
-st.download_button(
-    label="Download Filtered CSV",
-    data=csv_export,
-    file_name="filtered_trades.csv",
-    mime="text/csv",
-)
