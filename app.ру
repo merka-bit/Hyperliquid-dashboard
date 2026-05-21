@@ -207,7 +207,7 @@ if "dir" in filtered_df.columns:
 # TOP COINS
 # =========================
 
-st.subheader("Top Coins by PnL")
+
 
 coin_stats = (
     filtered_df.groupby("coin")["closedPnl"]
@@ -229,7 +229,7 @@ st.plotly_chart(fig_coin, use_container_width=True)
 # PNL DISTRIBUTION
 # =========================
 
-st.subheader("Trade Distribution")
+
 
 fig_hist = px.histogram(
     filtered_df,
