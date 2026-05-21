@@ -277,11 +277,6 @@ fig_heat = px.imshow(
 st.plotly_chart(fig_heat, use_container_width=True)
 
 # =========================
-# RAW DATA
-# =========================
-
-with st.expander("Raw Data"):
-    st.dataframe(filtered_df, use_container_width=True)
 
 # =========================
 # EXPORT
